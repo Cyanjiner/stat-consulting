@@ -1,0 +1,323 @@
+---
+title: "Latent class analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r load in Client Data}
+library(dplyr)
+library(plyr)
+library(poLCA)
+library(plotly)
+library(ggplot2)
+mydata <- read.csv('ClientAllData.csv')[-1]
+```
+
+# Latent Class Analysis
+
+#### 1. First, make sure all variables are factors and subset the data to include only LCA classification variables and covariates:
+
+```{r subset data,eval=FALSE}
+lca_subset<-subset(mydata, select=c(StudyClientId, age_group, Gender, Race, MaritalStatus, Religion, Aod1_class, Aod2_class, Disruption_class, LegalNonConform_class, LifeFunctionality_class, Suicide_class, Homicide_class, Trauma_class))
+lca_subset$Gender[!(lca_subset$Gender %in% c("M","F"))]<- NA
+lca_subset$Race[lca_subset$Race %in% c("Not on file","Undisclosed")] <- NA
+lca_subset$MaritalStatus[lca_subset$MaritalStatus %in% c("","Not Specified")] <- NA
+lca_subset$Religion[lca_subset$Religion %in% c('','Unknown')] <- NA
+lca_subset <- lca_subset %>% tidyr::drop_na()
+```
+
+```{r recode VARS values to numbers, include=FALSE,eval=FALSE}
+# recode response values to numbers starting at "1" (It's a poLCA thing)
+lca_subset$age_group<-revalue(lca_subset$age_group, 
+                              c("18-30"="1", 
+                                "31-50"="2",
+                                ">50"="3"))
+lca_subset$Gender<-revalue(lca_subset$Gender, c("M"="1", "F"="2"))
+lca_subset$Race<-revalue(lca_subset$Race, 
+                         c("Caucasian or White"="1", 
+                           "African American or Black"="2",
+                           'American Indian or Alaskan Native'='3',
+                           'Asian' = '4', 
+                           'Native Hawaiian/Other Pacific Islander'='5',
+                           'Multi-Racial'='6',
+                           'Some other race' = '7'))
+lca_subset$MaritalStatus<-revalue(lca_subset$MaritalStatus, 
+                                  c("Single/Never Married"="1", 
+                                    "Married"="2",
+                                    "Divorced/Annulled"='3',
+                                    'Civil Union'='4',
+                                    'Legally separated'='5',
+                                    'Widow/widower'='6',
+                                    'Other'='7'))
+lca_subset$Religion<-revalue(lca_subset$Religion, 
+                             c("Catholic"="1", 
+                               "Atheist"="2",
+                               "Agnostic"="3",
+                               "Protestant"="4",
+                               "Christian"="5",
+                               "Islamic"="6",
+                               "Baptist"="7",
+                               "Pentecostal"="8",
+                               "Buddhist"="9",
+                               "Jewish"="10",
+                               "Orthodox Christian"="11",
+                               "Mormon"="12",
+                               "None"="13",
+                               "Other"="14"))
+lca_subset$Aod1_class<-revalue(lca_subset$Aod1_class, 
+                               c("low"="1", "medium"="2",'high'='3'))
+lca_subset$Aod2_class<-revalue(lca_subset$Aod2_class, 
+                               c("low"="1", "medium"="2",'high'='3'))
+lca_subset$Disruption_class<-revalue(lca_subset$Disruption_class, 
+                                     c("low"="1", "medium"="2",'high'='3'))
+lca_subset$LegalNonConform_class<-revalue(lca_subset$LegalNonConform_class, c("low"="1", "medium"="2",'high'='3'))
+lca_subset$LifeFunctionality_class<-revalue(lca_subset$LifeFunctionality_class, c(c("low"="1", "medium"="2",'high'='3')))
+lca_subset$Suicide_class<-revalue(lca_subset$Suicide_class,
+                                  c("low"="1", "medium"="2",'high'='3'))
+lca_subset$Homicide_class<-revalue(lca_subset$Homicide_class, 
+                                   c("low"="1", "medium"="2",'high'='3'))
+lca_subset$Trauma_class<-revalue(lca_subset$Trauma_class, c("no/unknown"="2", "yes"="1"))
+```
+
+```{r factorize all VARS, eval=FALSE}
+# make sure all variables are factors
+lca_subset[-1] <- lapply(lca_subset[-1], factor)
+```
+
+#### 2. Second, define the LCA formula.
+
+-   Variables in parentheses are the latent class classification variables.
+
+-   Variables outside of the parentheses are covariates (not included in the LCA).
+
+-   Finally, run the LCA specifying a range of classes
+
+-   LCA: Classification VARS: ASUS / Risk/ Trauma
+
+-   covariates: demographics (no location)
+
+-   chisq+post-hoc: latent class vs. Outcome: Incident Score --\> binary
+
+```{r define covariates and variables, eval=FALSE}
+f <- cbind(Aod1_class,Aod2_class,Disruption_class,LegalNonConform_class,LifeFunctionality_class,Suicide_class,Homicide_class,Trauma_class)~age_group+Race+MaritalStatus+Religion
+```
+
+```{r check missing values, eval=FALSE}
+sapply(lca_subset, function(x) sum(is.na(x)))
+```
+
+```{r run poLCA analysis, eval=FALSE}
+# latent class analysis specifying 1-3 classes
+lCA1 <- poLCA(f,lca_subset, nclass=1,nrep=15) 
+lCA2 <- poLCA(f,lca_subset, nclass=2,nrep=15, graphs = T)
+lCA3 <- poLCA(f,lca_subset, nclass=3,nrep=15, graphs = T)
+
+```
+
+```{r calculate entropy, eval=FALSE}
+# Calculate entropy (3-class mode)l- values closer to 1.0 indicate greater separation of the classes.
+entropy<-function (p) sum(-p*log(p))
+error_prior <- entropy(lCA3$P) # Class proportions
+error_post <- mean(apply(lCA3$posterior, 1, entropy))
+LCA3_entropy <- (error_prior - error_post) / error_prior
+LCA3_entropy
+```
+
+```{r predict class membership, eval=FALSE}
+#predicted class membership is in:
+lCA3$predclass[1:30]
+#add variable to data set with all variables so it can be used as predictor variable:
+lca_subset$class <- lCA3$predclass
+```
+
+# Visualizations
+
+## Demographics
+
+```{r merge class back to orginal data, eval=FALSE}
+data <- mydata %>% 
+  inner_join(lca_subset[,c(1,15)], by = "StudyClientId")
+write.csv(data,"client_class.csv")
+```
+
+```{r, include=FALSE}
+data <- read.csv("client_class.csv")[-1]
+```
+
+```{r class versus age, echo=FALSE}
+data <- mutate(data, class = as.factor(class))
+
+age_plot <- ggplot(data, aes(x=CurrentAge, color=class, fill=class))+
+  geom_density(alpha=0.4)+
+  theme_minimal()+
+  xlab("Current Age")+
+  ylab("")+
+  ggtitle("Client class by Age")
+ggplotly(age_plot)
+```
+
+```{r class versus gender,echo=FALSE}
+gender_plot <- data %>% 
+  ggplot(aes(x=Gender, fill=Gender))+
+  geom_bar()+
+  facet_wrap(~class, labeller = label_both, scales="free")+
+  ggtitle("Client class by Gender")
+ggplotly(gender_plot)
+```
+
+```{r class versus race, echo=FALSE}
+race_plot <- 
+  ggplot(data,aes(x=Race, fill=Race))+
+  geom_bar()+
+  facet_grid(rows=vars(class), labeller = label_both, scales="free")+
+  ggtitle("Client class by Race")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+ggplotly(race_plot)
+```
+
+```{r class versus religion, echo=FALSE}
+religion_plot <- 
+  ggplot(data,aes(x=Religion, fill=Religion))+
+  geom_bar()+
+  facet_grid(rows=vars(class), labeller = label_both, scales="free")+
+  ggtitle("Client class by Religion")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+ggplotly(religion_plot)
+```
+
+```{r class versus marital status, echo=FALSE}
+marital_plot <- 
+  ggplot(data,aes(x=MaritalStatus, fill=MaritalStatus))+
+  geom_bar()+
+  facet_grid(rows=vars(class), labeller = label_both, scales="free")+
+  ggtitle("Client class by Marital Status")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+ggplotly(marital_plot)
+```
+
+## ASUS
+
+```{r class vs aod1, echo=FALSE}
+aod1_plot <- ggplot(data, aes(x=AodInvolvement, color=class, fill=class))+
+  geom_density(alpha=0.4)+
+  theme_minimal()+
+  xlab("Lifetime AOD Involvement Score")+
+  ylab("")+
+  ggtitle("Distribution of AOD Lifetime Involvement by Client Class")
+ggplotly(aod1_plot)
+```
+
+```{r aod last 6 months, echo=FALSE}
+aod2_plot <- data %>% 
+  mutate(Aod2_class = factor(Aod2_class, levels=c("low","medium","high"))) %>% 
+  ggplot(aes(x=Aod2_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("AOD Involvement Level Last Six Months")+
+  ylab("")+
+  ggtitle("AOD Involvement Level Last Six Months")
+ggplotly(aod2_plot)
+```
+
+```{r legal non conform, echo=FALSE}
+legal_plot <- data %>% 
+  mutate(LegalNonConform_class = factor(LegalNonConform_class, levels=c("low","medium","high"))) %>% 
+  ggplot(aes(x=LegalNonConform_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Legal Non Conforming Problems Last Six Months")+
+  ylab("")+
+  ggtitle("Legal Non Conforming Problems")
+ggplotly(legal_plot)
+```
+
+```{r class vs. disruption, echo=FALSE}
+dis_plot <- data %>% 
+  mutate(Disruption_class = factor(Disruption_class, levels=c("low","medium","high"))) %>% 
+  ggplot(aes(x=Disruption_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Disruption Score")+
+  ylab("")+
+  ggtitle("Distribution of Disruption by Client Class")
+ggplotly(dis_plot)
+```
+
+```{r life functionality vs. class, echo=FALSE}
+func_plot <- 
+  ggplot(data, aes(x=GlobalAodPsychosocialDistruptionAndProblems,fill=class,color=class))+
+  geom_density(alpha=0.5)+
+ # facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Life Functionality Problems")+
+  ylab("")+
+  ggtitle("Life Functionality Problems by Client Class")
+ggplotly(func_plot)
+```
+
+## RISK
+
+```{r suicide risk, echo=FALSE}
+suicide_plot <- data %>% 
+  filter(SuicideRisk_Total != 0) %>% 
+  ggplot(aes(x=SuicideRisk_Total,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Suicide Risks Level")+
+  ylab("")+
+  ggtitle("Suicide Risk Levels by Client Class")
+ggplotly(suicide_plot)
+```
+
+```{r homicide risk, echo=FALSE}
+homicide_plot <- data %>% 
+  filter(HomicideRisk_Total != 0) %>% 
+  ggplot(aes(x=HomicideRisk_Total,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Homicide Risks Level")+
+  ylab("")+
+  ggtitle("Homicide Risk Levels by Client Class")
+ggplotly(homicide_plot)
+```
+
+## Trauma
+
+```{r trauma history, echo=FALSE}
+trauma_plot <- data %>% 
+  ggplot(aes(x=Trauma_class, fill=Trauma_class))+
+  geom_bar(alpha=0.8)+
+  facet_wrap(~class, labeller = label_both, scales="free")+
+  ylab("Trauma History")+
+  ggtitle("Client Class vs. Trauma History")
+ggplotly(trauma_plot)
+```
+
+## Incidents
+
+```{r incidents, echo=FALSE}
+incident_plot <- data %>% 
+  filter(IncidentScore != 0) %>% 
+  ggplot(aes(x=IncidentScore,fill=class))+
+  geom_density(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Incident Scores")+
+  ylab("")+
+  ggtitle("Incident Scores by client class")
+ggplotly(incident_plot)
+```

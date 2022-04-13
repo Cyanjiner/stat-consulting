@@ -366,4 +366,5 @@ ClientAllData <- ClientAllData %>%
          )
 
 ClientAllData$Trauma_class[is.na(ClientAllData$Trauma_class)] <- "no/unknown"
+write.csv(ClientAllData, file='ClientAllData.csv')
 ```
