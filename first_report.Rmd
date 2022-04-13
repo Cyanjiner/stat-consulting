@@ -26,6 +26,7 @@ AsusData <- read.csv("../Data /AsusData.csv")
 
 ```{r, include=FALSE, eval=FALSE}
 #FOR LEAH
+library(dplyr)
 setwd("~/Desktop/QAC 380- Stat. Consulting")
 
 RiskDaTa <- read.csv("RiskData.csv")
@@ -37,7 +38,7 @@ EpisodeDaTa <- read.csv("EpisodeData.csv")
 IncidentDaTa <- read.csv("IncidentData.csv")
 TraumaDaTa <- read.csv("EpisodeTraumaData.csv") # need to check
 LsiData <- read.csv("LsiData.csv")
-
+AsusData <- read.csv("AsusData.csv")
 
 ```
 
@@ -302,19 +303,29 @@ ggplot(data = top4cities, aes(x = City, y = count, fill= City)) +
 
 ```{r Multiple regression on Incident score}
 #Multiple Regression 
-my.lm1 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory, data= ClientAllData)
+my.lm1 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems, data= ClientAllData)
 summary(my.lm1)
 
-my.lm2 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+CurrentAge+as.factor(MaritalStatus)+as.factor(Race), data= ClientAllData)
+my.lm2 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems+CurrentAge+as.factor(MaritalStatus)+as.factor(Race), data= ClientAllData)
 summary(my.lm2)
+
+my.lm3 <- lm(LegalNonConformingLastSixMonths~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems, data= ClientAllData)
+summary(my.lm3)
+
+my.lm4 <- lm(LegalNonConformingLastSixMonths~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems+CurrentAge+as.factor(MaritalStatus)+as.factor(Race), data= ClientAllData)
+summary(my.lm4)
+
+#RECODE RACE AND MARITAL STATUS BC RIGHT NOW THEY HAVE LARGE ERROR TERMS 
 
 ```
 
 ```{r Regression with interaction term}
 my.lm3 <- lm(IncidentScore ~ SuicideRisk_Total + CriminalHistory +
-SuicideRisk_Total*AlcoholDrugProblems, data = ClientAllData)
+SuicideRisk_Total*CriminalHistory, data = ClientAllData)
 summary(my.lm3)
+#MAKE INTERACTION PLOTS 
 ```
+
 
 ### Latent Class Analysis
 
