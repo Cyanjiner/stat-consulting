@@ -24,7 +24,7 @@ LsiData <- read.csv("../Data /LsiData.csv")
 AsusData <- read.csv("../Data /AsusData.csv")
 ```
 
-```{r, include=FALSE}
+```{r, include=FALSE, eval=FALSE}
 #FOR LEAH
 setwd("~/Desktop/QAC 380- Stat. Consulting")
 
@@ -79,7 +79,7 @@ OffData <- OffData %>%
 
 Take a look at missing values of ChargeSeverity --\> Non-labeled offense calss
 
-```{r, include=FALSE}
+```{r, include=FALSE, eval=FALSE}
 OffData %>% filter(is.na(ChargeSeverity)) %>%
   group_by(SentencedChargeDescription) %>% 
   summarise(count=n())
