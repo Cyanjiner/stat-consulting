@@ -9,20 +9,22 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
 
-```{r load packages and data}
+```{r load packages and data, include=FALSE}
+# FOR JINER
 library(dplyr)
-RiskDaTa <- read.csv("Data /RiskData.csv")
-OffData <- read.csv("Data /OffenseData.csv")
-DrugData <- read.csv("Data /DrugData.csv")
-AdressDaTa <- read.csv("Data /ClientAddressData.csv") %>% distinct() # remove redundant rows from adress data
-ClientDaTa <- read.csv("Data /ClientData.csv")
-EpisodeDaTa <- read.csv("Data /EpisodeData.csv")
-IncidentDaTa <- read.csv("Data /IncidentData.csv")
-TraumaDaTa <- read.csv("Data /EpisodeTraumaData.csv") # need to check
-LsiData <- read.csv("Data /LsiData.csv")
+RiskDaTa <- read.csv("../Data /RiskData.csv")
+OffData <- read.csv("../Data /OffenseData.csv")
+DrugData <- read.csv("../Data /DrugData.csv")
+AdressDaTa <- read.csv("../Data /ClientAddressData.csv") %>% distinct() # remove redundant rows from adress data
+ClientDaTa <- read.csv("../Data /ClientData.csv")
+EpisodeDaTa <- read.csv("../Data /EpisodeData.csv")
+IncidentDaTa <- read.csv("../Data /IncidentData.csv")
+TraumaDaTa <- read.csv("../Data /EpisodeTraumaData.csv") # need to check
+LsiData <- read.csv("../Data /LsiData.csv")
+AsusData <- read.csv("../Data /AsusData.csv")
 ```
 
-```{r}
+```{r, include=FALSE}
 #FOR LEAH
 setwd("~/Desktop/QAC 380- Stat. Consulting")
 
@@ -40,7 +42,8 @@ LsiData <- read.csv("LsiData.csv")
 ```
 
 ### Risk Data: Main VARS: SuicideRisk_Total / HomicideRiskTotal
-```{r Risk Data}
+
+```{r Risk Data, include=FALSE}
 # Aggregated new variable: Total Suicide Risk Level & Total Homicide Risk Level
 RiskDaTa <- RiskDaTa %>% 
   mutate(SuicideRisk_Total = ThoughtBetterOffDeadInTheLastMonth + WantedToHarmSelfInTheLastMonth + SuicidalThoughtsInTheLastMonth + SuicidePlanInTheLastMonth + AttemptedSuicideInTheLastMonth + FeltHopelessAboutFutureInTheLastMonth + AttemptedSuicideInLifeTime + HasFamilyMembersAttemptedOrCompletedSuicideInLifetime,
@@ -49,9 +52,12 @@ RiskDaTa <- RiskDaTa %>%
   TriedToKillSomeoneEliseInTheLastMonth + EverKilledSomeoneInLifetime +
   EverHurtAuthorityFigureInLifetime + EverHurtAuthorityFigureInLifetimeUsedWeapon)
 ```
+
 #### latested_risk_by_client: data frame of most recently assessed risk levels
+
 variables: StudyClientId, AssessmentYear, AssessmentType, SuicideRisk_Total, HomicideRiskTotal
-```{r risk level by most recent year}
+
+```{r risk level by most recent year, include=FALSE}
 # for merge purpose
 latest_risk_by_client <- RiskDaTa %>% 
   group_by(StudyClientId) %>% 
@@ -62,19 +68,7 @@ latest_risk_by_client <- RiskDaTa %>%
             AssessmentType = last(AssessmentType))
 ```
 
-
-```{r assessment methods for risk data}
-# assessment methods year
-# RiskDaTa %>% group_by(AssessmentType) %>% 
-#  summarise(min_year = min(AssessmentYear),
-#            max_year = max(AssessmentYear),
-#            number_of_clients = n_distinct(StudyClientId)) # unique client counts
-```
-
-### Offense Data: Main VAR (NO NEED TO RUN THIS SECTION)
-
-Class A: most severe (e.g.: murder, threatening, sexual assault)
-```{r Offense Data}
+```{r Offense Data, eval=FALSE, echo=FALSE, include=FALSE}
 OffData <- OffData %>% 
   mutate(ChargeSeverity = case_when(SentencedChargeOffenseClass == "A" ~ 5,
                                     SentencedChargeOffenseClass == "B" ~ 4,
@@ -83,17 +77,21 @@ OffData <- OffData %>%
                                     SentencedChargeOffenseClass == "U" ~ 1))
 ```
 
-Take a look at missing values of ChargeSeverity --> Non-labeled offense calss
-```{r}
+Take a look at missing values of ChargeSeverity --\> Non-labeled offense calss
+
+```{r, include=FALSE}
 OffData %>% filter(is.na(ChargeSeverity)) %>%
   group_by(SentencedChargeDescription) %>% 
   summarise(count=n())
 ```
+
 #### TO DO: do we need to assign a new class to these offenses or do we just treat it as a binary variable instead (have offense history = 1, not have = 0)?
-#### NOTE: the Offense Data DOES NOT have ClientID or any thing that could be used to reference another  dataset. We might need to discard it.
+
+#### NOTE: the Offense Data DOES NOT have ClientID or any thing that could be used to reference another dataset. We might need to discard it.
 
 ### Alcohol Drug Problem & Criminal History Data
-```{r Drug use data}
+
+```{r Drug use data, include=FALSE}
 # use AlcoholDrugProblem from LsiData instead
 latest_drug_by_client <- LsiData %>% 
   group_by(StudyClientId) %>% 
@@ -111,15 +109,19 @@ latest_criminal_by_client <- LsiData %>%
 ```
 
 ### Incident Data: Main VAR: IncidentScore (from Incident_byclient dataset)
-#### IncidentScore: a composite measure based on the number of incidents corresponding to its level of severity (i.e. the sum of count * incident level)
-#### IncidentLevel: discrete values 1,2,5 according to its type(5=most severe, i.e. [I] level incident)
+
+-   IncidentScore: a composite measure based on the number of incidents corresponding to its level of severity (i.e. the sum of count \* incident level)
+
+-   IncidentLevel: discrete values 1,2,5 according to its type(5=most severe, i.e. [I] level incident)
+
 All types of incidents are:
-```{r incident types}
+
+```{r incident types, echo=FALSE}
 # frequency table of incident type
 descr::freq(IncidentDaTa$IncidentType,plot=FALSE)
 ```
 
-```{r Incident data}
+```{r Incident data management, include=FALSE}
 # split client Ids and recode incident type by severity
 IncidentDaTa2 <- IncidentDaTa %>% 
   mutate(IncidentLevel = case_when(grepl("\\[I]", IncidentType) ~ 5, 
@@ -145,9 +147,21 @@ Incident_by_client <- IncidentDaTa2 %>%
 names(Incident_by_client)[1] <- "StudyClientId"
 ```
 
+### Trauma Data: whether or not Clients have any trauma history
 
-### Trauma Data
-```{r Trauma DaTa}
+-   Domestic Violence History
+
+-   Physical Abuse Victim
+
+-   Sexual Abuse Victim
+
+-   Other Trauma History
+
+-   Ever Diagnosed With PTSD
+
+-   Has Chronic Pain Problems?
+
+```{r Trauma data management, include=FALSE}
 # recode trauma variables True -> 1 & False -> 0
 TraumaDaTa2 <- TraumaDaTa %>% 
   mutate(DomesticViolenceHistory = if_else(DomesticViolenceHistory == "True", 1,0),
@@ -166,8 +180,38 @@ Trauma_by_client <- TraumaDaTa2 %>%
   summarise(TraumaHistory=max(TraumaHistory))
 ```
 
+### ASUS Data
+
+-   AodInvolvement1: a composite measure of the **lifetime** involvement in the 10 major drug categories described in the literature. (QUANTITATIVE)
+
+-   Disruption1: a broad measure of problems and negative consequences due to AOD use. (QUANTITATIVE)
+
+-   AodLastSixMonths: measures extent of involvement and disruption from AOD use in the past six months
+
+-   LegalNonConformingLastSixMonths: meaures legal problems (involvement in the adult criminal justice system) over the last six months client has been in the community.
+
+-   GlobalAodPsychosocialDistruptionAndProblems: comprised of the sum of the four scales: INVOLVEMENT, DISRUPTION, MOOD, and SOCIAL NON-CONFORMING. *Provides a global and overall measure of the degree to which the client is indicating life-functioning problems in the areas of substance use, mood adjustment and community compliance.*
+
+```{r asus data management}
+#asus: median split
+#ASUS --> INVOLVEMENT1 & DISRUPTION1
+#LAST SIX MONTHS vars + Scale 9 ==> 8 vars
+latest_asus <- AsusData %>% 
+  group_by(StudyClientId) %>% 
+  arrange(AssessmentYear) %>% 
+  summarise(AodInvolvement = last(AodInvolvement1),
+            Disruption = last(Disruption1),
+            AodLastSixMonths = last(AodLastSixMonths),
+            LegalNonConformingLastSixMonths = last(LegalNonConformingLastSixMonths),
+            GlobalAodPsychosocialDistruptionAndProblems = last(GlobalAodPsychosocialDistruptionAndProblems),
+            AssessmentYear = last(AssessmentYear),
+            AssessmentType = last(AssessmentType))
+
+```
+
 ### ClientAllData: merged ClientData with Risk / Incident / Alcohol&Drug / Criminal History & Trauma & Address datasets
-```{r merging data}
+
+```{r merging data and recode NA in incidentscore to 0}
 # merge all data frames together
 ClientAllData <- ClientDaTa %>% 
   left_join(latest_criminal_by_client[,1:2], by="StudyClientId") %>%
@@ -179,17 +223,19 @@ ClientAllData <- ClientDaTa %>%
               summarise(AddressType = last(AddressType),
                         City = last(City),
                         State = last(State),
-                        Zip = last(Zip)), by="StudyClientId")
+                        Zip = last(Zip)), by="StudyClientId") %>% 
+  left_join(latest_asus[,1:6], by='StudyClientId')
 
 # recode NA in the IncidentScore to be 0
 ClientAllData$IncidentScore[is.na(ClientAllData$IncidentScore)] <- 0
 
 ClientAllData %>%
   filter(CurrentAge >= 18) -> ClientAllData
-
 ```
 
-```{r}
+### Univariate Plots
+
+```{r Plot: Clients with Criminal History}
 library(ggplot2)
 
 ggplot(data= na.omit(subset(ClientAllData, select = c(CriminalHistory))),
@@ -197,9 +243,9 @@ ggplot(data= na.omit(subset(ClientAllData, select = c(CriminalHistory))),
   geom_bar(na.rm = TRUE)+
   ggtitle("Clients with Criminal History")+
   xlab("Criminal History")
-
 ```
-```{r}
+
+```{r Plot: Clients with Alcohol and Drug Problems}
 ggplot(data= na.omit(subset(ClientAllData, select = c(AlcoholDrugProblems))),
        aes(x=reorder(as.character(AlcoholDrugProblems), AlcoholDrugProblems), fill = as.character(AlcoholDrugProblems)))+
   geom_bar(na.rm = TRUE)+
@@ -207,14 +253,15 @@ ggplot(data= na.omit(subset(ClientAllData, select = c(AlcoholDrugProblems))),
   xlab("Alcohol and Drug Problems")
 ```
 
-```{r}
+```{r Plot: risk of suicide in clients}
 ggplot(data= na.omit(subset(ClientAllData, select = c(SuicideRisk_Total))),
        aes(x=reorder(as.character(SuicideRisk_Total), SuicideRisk_Total), fill = as.character(SuicideRisk_Total)))+
   geom_bar(na.rm = TRUE)+
   ggtitle("Risk of Suicide in Clients")+
   xlab("Suicide Risk")
 ```
-```{r}
+
+```{r Plot: homicidal risk of clients}
 ggplot(data= na.omit(subset(ClientAllData, select = c(HomicideRisk_Total))),
        aes(x=reorder(as.character(HomicideRisk_Total),HomicideRisk_Total), fill = as.character(HomicideRisk_Total)))+
   geom_bar(na.rm = TRUE)+
@@ -222,20 +269,21 @@ ggplot(data= na.omit(subset(ClientAllData, select = c(HomicideRisk_Total))),
   xlab("Homicide Risk")
 ```
 
-```{r}
+```{r Density Plot of Client Incidents}
 ggplot(data=ClientAllData)+
  geom_density(aes(x=IncidentScore))+
- ggtitle("Client Incidents")
+ ggtitle("Density Plot of Client Incidents")
 ```
 
-```{r}
+```{r Plot: Clients Assessed for Trauma}
 ggplot(data= na.omit(subset(ClientAllData, select = c(TraumaHistory))),
        aes(x=reorder(as.character(TraumaHistory),TraumaHistory), fill = as.character(TraumaHistory)))+
   geom_bar(na.rm = TRUE)+
   ggtitle("Clients Assessed for Trauma")+
   xlab("Trauma")
 ```
-```{r}
+
+```{r Plot: Clients by cities}
 require(tidyverse)
 top4cities <- ClientAllData %>%
     group_by(City) %>%
@@ -246,10 +294,13 @@ top4cities <- na.omit(top4cities)
 
 ggplot(data = top4cities, aes(x = City, y = count, fill= City)) +
     geom_col()+
-  ggtitle("Clients ")
+  ggtitle("Clients by Top 4 Cities")
 
 ```
-```{r}
+
+### Regression Analyses
+
+```{r Multiple regression on Incident score}
 #Multiple Regression 
 my.lm1 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory, data= ClientAllData)
 summary(my.lm1)
@@ -259,9 +310,60 @@ summary(my.lm2)
 
 ```
 
-```{r}
+```{r Regression with interaction term}
 my.lm3 <- lm(IncidentScore ~ SuicideRisk_Total + CriminalHistory +
 SuicideRisk_Total*AlcoholDrugProblems, data = ClientAllData)
 summary(my.lm3)
 ```
 
+### Latent Class Analysis
+
+#### Categorize variables for latent class analysis
+
+-   **RISK data:** Suicide_class / Homicide_class *( low - medium - high)*
+
+    -   SuicideRisk --\> scale 0-8, \<3 is low, 3-5 is medium, 6-8 is high
+
+    -   HomicideRisk -\> scale 0-7, \<2 is low, 2-3 is medium, \> 3 is high
+
+-   **ASUS data:** Aod1_class / Aod2_class (last 6 mos) / Disruption_class / LegalNonConform_class / LifeFunctionality_class *( low - medium - high)*
+
+-   **Other:** Trauma_class *(yes - no/unknown)* / age_group (*level: 18-30 / 31-50 / \>50)*
+
+```{r Latent class analysis data management}
+# age groups: 18-30, 31-50, and > 50
+ClientAllData <- ClientAllData %>% 
+  mutate(age_group = case_when(CurrentAge <= 30 ~ '18-30',
+                               CurrentAge %in% c(31:50) ~ '31-50',
+                               CurrentAge > 50 ~ '>50'),
+         # split AodInvolvement based on 0-0.35, 0.25-0.75, 0.75 quantiles
+         Aod1_class = cut(AodInvolvement, 
+                          c(-Inf, quantile(AodInvolvement, c(.25, .75),na.rm=TRUE), Inf), 
+                          labels=c('low','medium','high')),
+         # split AodLastSixMonths based on 0-0.35, 0.25-0.75, 0.75 quantiles
+         Aod2_class = cut(AodLastSixMonths, 
+                          c(-Inf, quantile(AodLastSixMonths, c(.25, .75),na.rm=TRUE), Inf), 
+                          labels=c('low','medium','high')),
+         # split Disruption based on 0-0.35, 0.25-0.75, 0.75 quantiles
+         Disruption_class = cut(Disruption, 
+                          c(-Inf, quantile(Disruption, c(.25, .75),na.rm=TRUE), Inf), 
+                          labels=c('low','medium','high')),
+         # split LegalNonConformingLastSixMonths based on 0-0.35, 0.25-0.75, 0.75 quantiles
+         LegalNonConform_class = cut(LegalNonConformingLastSixMonths, 
+                          c(-Inf, quantile(LegalNonConformingLastSixMonths, c(.25, .75),na.rm=TRUE), Inf), 
+                          labels=c('low','medium','high')),
+         # split GlobalPsychological problems based on 0-0.35, 0.25-0.75, 0.75 quantiles
+         LifeFunctionality_class = cut(GlobalAodPsychosocialDistruptionAndProblems, 
+                          c(-Inf, quantile(GlobalAodPsychosocialDistruptionAndProblems, c(.25, .75),na.rm=TRUE), Inf), 
+                          labels=c('low','medium','high')),
+         Suicide_class = case_when(SuicideRisk_Total < 3 ~ 'low',
+                                   SuicideRisk_Total %in% 3:5 ~ 'medium',
+                                   SuicideRisk_Total > 5 ~ 'high'),         
+         Homicide_class = case_when(SuicideRisk_Total < 2 ~ 'low',
+                                   SuicideRisk_Total %in% 2:3 ~ 'medium',
+                                   SuicideRisk_Total > 3 ~ 'high'),
+         Trauma_class = ifelse(TraumaHistory == 1, "yes", "no/unknown")
+         )
+
+ClientAllData$Trauma_class[is.na(ClientAllData$Trauma_class)] <- "no/unknown"
+```
