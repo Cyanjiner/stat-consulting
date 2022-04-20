@@ -232,6 +232,13 @@ ClientAllData$IncidentScore[is.na(ClientAllData$IncidentScore)] <- 0
 
 ClientAllData %>%
   filter(CurrentAge >= 18) -> ClientAllData
+
+ClientAllData <- ClientAllData %>%
+  mutate(MaritalStatus = if_else(MaritalStatus == "Married", "Married", "Not Married"))
+
+ClientAllData <- ClientAllData %>%
+  mutate(Race = if_else(Race == "Caucasian or White", "White", if_else(Race == "African American or Black", "Black", "Other")))
+
 ```
 
 ### Univariate Plots
@@ -303,17 +310,11 @@ ggplot(data = top4cities, aes(x = City, y = count, fill= City)) +
 
 ```{r Multiple regression on Incident score}
 #Multiple Regression 
-my.lm1 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems, data= ClientAllData)
+my.lm1 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems+LegalNonConformingLastSixMonths+AodLastSixMonths, data=ClientAllData)
 summary(my.lm1)
 
-my.lm2 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems+CurrentAge+as.factor(MaritalStatus)+as.factor(Race), data= ClientAllData)
+my.lm2 <- lm(IncidentScore~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems+CurrentAge+as.factor(MaritalStatus)+as.factor(Race)+LegalNonConformingLastSixMonths+AodLastSixMonths, data= ClientAllData)
 summary(my.lm2)
-
-my.lm3 <- lm(LegalNonConformingLastSixMonths~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems, data= ClientAllData)
-summary(my.lm3)
-
-my.lm4 <- lm(LegalNonConformingLastSixMonths~CriminalHistory+AlcoholDrugProblems+SuicideRisk_Total+HomicideRisk_Total+TraumaHistory+AodInvolvement+Disruption+GlobalAodPsychosocialDistruptionAndProblems+CurrentAge+as.factor(MaritalStatus)+as.factor(Race), data= ClientAllData)
-summary(my.lm4)
 
 #RECODE RACE AND MARITAL STATUS BC RIGHT NOW THEY HAVE LARGE ERROR TERMS 
 
