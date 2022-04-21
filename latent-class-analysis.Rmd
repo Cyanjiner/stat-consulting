@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```
 
 ```{r load in Client Data}
@@ -321,3 +321,231 @@ incident_plot <- data %>%
   ggtitle("Incident Scores by client class")
 ggplotly(incident_plot)
 ```
+
+# Client Class Profiles
+
+## Client Class 1
+
+```{r}
+data %>% group_by(class) %>% 
+  summarise(n=n())
+```
+
+```{r age}
+data %>% group_by(class) %>% 
+  summarise(min=min(CurrentAge),
+            median=median(CurrentAge),
+            mean=mean(CurrentAge),
+            max=max(CurrentAge))
+```
+
+```{r race}
+data %>% filter(class==1) %>% 
+  group_by(Race) %>% 
+  summarise(counts=n(),
+            percent=round(counts/nrow(data[data$class==1,]),2)) %>% 
+  arrange(desc(counts))
+```
+
+```{r religion}
+data %>% filter(class==1) %>% 
+  group_by(Religion) %>% 
+  summarise(counts=n(),
+            percent=round(counts/nrow(data[data$class==1,]),3)) %>% 
+  arrange(desc(counts))
+```
+
+# Chi-square Test
+
+```{r chi-square}
+data <- data %>% 
+  mutate(Incident_class = ifelse(IncidentScore == 1,"Yes","No"),
+         Client_class = as.factor(class))
+
+chi <- chisq.test(data$Incident_class, data$Client_class)
+chi
+```
+
+```{r observed cell counts}
+chi$observed
+```
+
+```{r col perc}
+prop.table(chi$observed, 2)
+```
+
+```{r row perc}
+prop.table(chi$observed, 1)
+```
+
+```{r post-hoc}
+source('https://raw.githubusercontent.com/PassionDrivenStatistics/R/master/ChiSquarePostHoc.R')
+
+chisq.post.hoc(chi$observed, popsInRows=FALSE, control="bonferroni")
+```
+
+### Client class profiles
+```{r rescale data}
+library(tidyr)
+# get rescaled data matrix of numeric variables using min-max difference normalization
+maxmin <- function(x){
+  x <- (x-min(x))/(max(x)-min(x))
+}
+data_mat <- data %>% 
+  select(Client_class,CurrentAge, SuicideRisk_Total, HomicideRisk_Total, IncidentScore, CriminalHistory, TraumaHistory, AodInvolvement, Disruption, AodLastSixMonths, LegalNonConformingLastSixMonths,GlobalAodPsychosocialDistruptionAndProblems) %>% 
+  mutate(Client_class=as.numeric(as.character(Client_class)))
+data_mat[is.na(data_mat$TraumaHistory),]$TraumaHistory = 0
+data_mat[is.na(data_mat$CriminalHistory),]$CriminalHistory = 0
+
+data_scaled <- data_mat %>% 
+  drop_na() %>% 
+  sapply(maxmin) %>% 
+  as.data.frame() %>% 
+  mutate(Client_class = data_mat$Client_class) %>% 
+  group_by(Client_class) %>% 
+  summarise(Age = mean(CurrentAge),
+            SuicideRisk_Total=mean(SuicideRisk_Total),
+            HomicideRisk_Total=mean(HomicideRisk_Total),
+            TraumaHistory = mean(TraumaHistory),
+            CriminalHistory = mean(CriminalHistory),
+            AodInvolvement = mean(AodInvolvement),
+            Disruption = mean(Disruption),
+            LifeFunctionProblem = mean(GlobalAodPsychosocialDistruptionAndProblems),
+            AodLastSixMonths = mean(AodLastSixMonths),
+            LegalNonConform = mean(LegalNonConformingLastSixMonths))
+```
+
+```{r cluster 1 profie}
+library(fmsb)
+all_cluster1 <- data_scaled %>% 
+  filter(Client_class==1) 
+# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each variable to show on the plot!
+all_cluster1 <- rbind(rep(0.75,11) , rep(0,11) , all_cluster1)
+radarchart(all_cluster1[-1],axistype=1,
+           # custom polygon
+           pcol = rgb(0.2,0.5,0.5,0.9), pfcol =rgb(0.2,0.5,0.5,0.5), plwd=4,
+           # custom grid
+           cglcol = "grey", cglty = 1, axislabcol = "grey", caxislabels = c(0,0.15,0.25,0.5,0.75), cglwd=0.8,
+           # custom labels
+           vlcex = 0.7, # font size for labels
+           vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
+           calcex = 0.8, # font size of center axis labels
+           title="Cluster 1 Profile")
+```
+
+```{r cluster 2 profie}
+all_cluster2 <- data_scaled %>% 
+  filter(Client_class==2) 
+# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each variable to show on the plot!
+all_cluster2 <- rbind(rep(0.75,11) , rep(0,11) , all_cluster2)
+radarchart(all_cluster2[-1],axistype=1,
+           # custom polygon
+           pcol = 4, pfcol =rgb(0, 0.4, 1, 0.25), plwd=4,
+           # custom grid
+           cglcol = "grey", cglty = 1, axislabcol = "grey", caxislabels =  c(0,0.15,0.25,0.5,0.75), cglwd=0.8,
+           # custom labels
+           vlcex = 0.7, # font size for labels
+           vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
+           calcex = 0.8, # font size of center axis labels
+           title="Cluster 2 Profile")
+```
+
+```{r cluster 3 profie}
+all_cluster3 <- data_scaled %>% 
+  filter(Client_class==3) 
+# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each variable to show on the plot!
+all_cluster3 <- rbind(rep(0.75,11) , rep(0,11) , all_cluster3)
+radarchart(all_cluster3[-1],axistype=1,
+           # custom polygon
+           pcol = rgb(1, 0.4, 0.6, 0.9), pfcol =rgb(1, 0.4, 0.6, 0.25), plwd=4,
+           # custom grid
+           cglcol = "grey", cglty = 1, axislabcol = "grey", caxislabels =  c(0,0.15,0.25,0.5,0.75), cglwd=0.8,
+           # custom labels
+           vlcex = 0.7, # font size for labels
+           vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
+           calcex = 0.8, # font size of center axis labels
+           title="Cluster 3 Profile")
+```
+
+```{r table, include=FALSE}
+table <- 
+  data_mat %>% 
+  group_by(Client_class) %>% 
+  summarise(`Current Age` = mean(CurrentAge),
+            `Suicide Risk Level`=mean(SuicideRisk_Total),
+            `Homicide Risk Level`=mean(HomicideRisk_Total),
+            `Criminal History` = mean(CriminalHistory),
+            `Aod Involvement` = mean(AodInvolvement),
+            `Disruption` = mean(Disruption),
+            `Life Functioning Problems` = mean(GlobalAodPsychosocialDistruptionAndProblems),
+            `Aod Last Six Months` = mean(AodLastSixMonths),
+            `Legal Non-Conforming Problems` = mean(LegalNonConformingLastSixMonths))  %>% 
+  t() %>% 
+  round(digits = 2) %>% 
+  as.data.frame() 
+table <- table[-1,]
+colnames(table) <- c("Cluster 1", "Cluster 2", "Cluster 3")
+table2 <- 
+      rbind(`Number of Clients`=c(905,467,442),
+      table, 
+      `Proportion with Trauma History` = c('33%','28%','44%'))
+```
+
+```{r draw table}
+library(kableExtra)
+table2[2,3] <- cell_spec(table2[2,3], color = "white", background = "red",bold = T)
+table2[3,3] <- cell_spec(table2[3,3], color = "white", background = "red",bold = T)
+table2[3,2] <- cell_spec(table2[3,2], color = "white", background = "green",bold = T)
+table2[4,2] <- cell_spec(table2[4,2], color = "white", background = "green",bold = T)
+table2[4,3] <- cell_spec(table2[4,3], color = "white", background = "red",bold = T)
+table2[5,1] <- cell_spec(table2[5,1], color = "white", background = "red",bold = T)
+table2[6,3] <- cell_spec(table2[6,3], color = "white", background = "red",bold = T)
+table2[6,2] <- cell_spec(table2[6,2], color = "white", background = "green",bold = T)
+table2[7,3] <- cell_spec(table2[7,3], color = "white", background = "red",bold = T)
+table2[7,2] <- cell_spec(table2[7,2], color = "white", background = "green",bold = T)
+table2[8,3] <- cell_spec(table2[8,3], color = "white", background = "red",bold = T)
+table2[8,2] <- cell_spec(table2[8,2], color = "white", background = "green",bold = T)
+table2[9,3] <- cell_spec(table2[9,3], color = "white", background = "red",bold = T)
+table2[9,2] <- cell_spec(table2[9,2], color = "white", background = "green",bold = T)
+table2[10,3] <- cell_spec(table2[10,3], color = "white", background = "red",bold = T)
+table2[10,2] <- cell_spec(table2[10,2], color = "white", background = "green",bold = T)
+table2[11,3] <- cell_spec(table2[11,3], color = "white", background = "red",bold = T)
+table2[11,2] <- cell_spec(table2[11,2], color = "white", background = "green",bold = T)
+table2 %>% 
+  kbl(escape = F, booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped", position = "left")
+```
+
+
+```{r summary, echo=FALSE}
+data[is.na(data$CriminalHistory),]$CriminalHistory = 0
+data3 <- data %>% 
+  select(Client_class,CurrentAge, Gender, Race, MaritalStatus, Religion, City, SuicideRisk_Total, HomicideRisk_Total, IncidentScore, CriminalHistory, TraumaHistory, AodInvolvement, Disruption, AodLastSixMonths, LegalNonConformingLastSixMonths,GlobalAodPsychosocialDistruptionAndProblems) %>% 
+   mutate(TraumaHistory = as.factor(case_when(is.na(TraumaHistory)~0,
+                                    TraumaHistory == 1~1,
+                                    TraumaHistory == 0~0)),
+          Gender = as.factor(Gender),
+          Race=as.factor(Race),
+          MaritalStatus=as.factor(MaritalStatus),
+          Religion=as.factor(Religion),
+          `Discharged City`=as.factor(City)) 
+cluster1_demo <- data3 %>% 
+  filter(Client_class == 1) %>% 
+  select(Gender, Race, MaritalStatus, Religion, `Discharged City`) %>% 
+  do(`Demographics Summary`=summary(.))
+cluster2_demo <- data3 %>% 
+  filter(Client_class == 2) %>% 
+  select(Gender, Race, MaritalStatus, Religion, `Discharged City`) %>% 
+  do(`Demographics Summary`=summary(.))
+cluster3_demo <- data3 %>% 
+  filter(Client_class == 3) %>% 
+  select(Gender, Race, MaritalStatus, Religion, `Discharged City`) %>% 
+  do(`Demographics Summary`=summary(.))
+```
+
+```{r display summary}
+cluster1_demo$`Demographics Summary`
+cluster2_demo$`Demographics Summary`
+cluster3_demo$`Demographics Summary`
+```
+
