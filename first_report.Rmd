@@ -42,6 +42,21 @@ AsusData <- read.csv("AsusData.csv")
 
 ```
 
+```{r}
+#for Keli
+library(dplyr)
+RiskDaTa <- read.csv("~/Desktop/Data /RiskData.csv")
+OffData <- read.csv("~/Desktop/Data /OffenseData.csv")
+DrugData <- read.csv("~/Desktop/Data /DrugData.csv")
+AdressDaTa <- read.csv("~/Desktop/Data /ClientAddressData.csv") %>% distinct() # remove redundant rows from adress data
+ClientDaTa <- read.csv("~/Desktop/Data /ClientData.csv")
+EpisodeDaTa <- read.csv("~/Desktop/Data /EpisodeData.csv")
+IncidentDaTa <- read.csv("~/Desktop/Data /IncidentData.csv")
+TraumaDaTa <- read.csv("~/Desktop/Data /EpisodeTraumaData.csv") # need to check
+LsiData <- read.csv("~/Desktop/Data /LsiData.csv")
+AsusData <- read.csv("~/Desktop/Data /AsusData.csv")
+```
+
 ### Risk Data: Main VARS: SuicideRisk_Total / HomicideRiskTotal
 
 ```{r Risk Data, include=FALSE}
