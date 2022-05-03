@@ -355,7 +355,7 @@ data %>% filter(class==1) %>%
   arrange(desc(counts))
 ```
 
-# Chi-square Test
+# Chi-square Test (Incident_class vs. Class membership)
 
 ```{r chi-square}
 data <- data %>% 
@@ -383,6 +383,24 @@ source('https://raw.githubusercontent.com/PassionDrivenStatistics/R/master/ChiSq
 
 chisq.post.hoc(chi$observed, popsInRows=FALSE, control="bonferroni")
 ```
+
+```{r chi square location}
+chi2 <- chisq.test(data$City, data$Client_class)
+chi2
+```
+
+```{r location prop table}
+prop.table(chi2$observed, 2)
+```
+
+```{r location prop table2}
+prop.table(chi2$observed, 1)
+```
+
+```{r chi2 table}
+chi2$observed
+```
+
 
 ### Client class profiles
 ```{r rescale data}
