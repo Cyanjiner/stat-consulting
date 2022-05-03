@@ -145,6 +145,15 @@ write.csv(data,"client_class.csv")
 
 ```{r, include=FALSE}
 data <- read.csv("client_class.csv")[-1]
+data$City2 <- data$City
+data$City[data$City %in% c("Htfd","Hartford")] <- "Hartford"
+data$City[data$City %in% c("Norwich","NORWICH")] <- "Norwich"
+data$City[data$City %in% c("E Hartford","E Htfd","East Hartford")] <- "East Hartford"
+data$City[data$City %in% c("middletown","Middletown")] <- "Middletown"
+data$City[data$City %in% c("N Haven","New haven","New Haven","NEW HAVEN")] <- "New Haven"
+data$City[data$City %in% c("New Brit","New Britain")] <- "New Britain"
+data$City[data$City %in% c("W Haven","West Haven")] <- "West Haven"
+data$City[data$City %in% c("waterbury","Waterbury","Wtby")] <- "Waterbury"
 ```
 
 ```{r class versus age, echo=FALSE}
@@ -282,6 +291,18 @@ suicide_plot <- data %>%
 ggplotly(suicide_plot)
 ```
 
+```{r suicide class risk, echo=FALSE}
+suicide_class_plot <- data %>% 
+  ggplot(aes(x=Suicide_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Suicide Risks Level")+
+  ylab("")+
+  ggtitle("Suicide Risk Levels by Client Class")
+ggplotly(suicide_class_plot)
+```
+
 ```{r homicide risk, echo=FALSE}
 homicide_plot <- data %>% 
   filter(HomicideRisk_Total != 0) %>% 
@@ -312,9 +333,9 @@ ggplotly(trauma_plot)
 ```{r incidents, echo=FALSE}
 incident_plot <- data %>% 
   filter(IncidentScore != 0) %>% 
-  ggplot(aes(x=IncidentScore,fill=class))+
-  geom_density(alpha=0.7)+
-  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  ggplot(aes(x=IncidentScore,color=class, fill=class))+
+  geom_density(alpha=0.5)+
+  facet_grid(labeller = label_both)+
   theme_minimal()+
   xlab("Incident Scores")+
   ylab("")+
@@ -384,6 +405,7 @@ source('https://raw.githubusercontent.com/PassionDrivenStatistics/R/master/ChiSq
 chisq.post.hoc(chi$observed, popsInRows=FALSE, control="bonferroni")
 ```
 
+
 ```{r chi square location}
 chi2 <- chisq.test(data$City, data$Client_class)
 chi2
@@ -401,6 +423,27 @@ prop.table(chi2$observed, 1)
 chi2$observed
 ```
 
+```{r location vs. client class}
+library(kableExtra)
+city_data <- data %>% 
+  group_by(City, Client_class) %>% 
+  summarise(count=n()) %>% 
+  tidyr::spread(Client_class, count) 
+names(city_data) <- c("Discharged City","Class 1","Class 2", "Class 3")
+city_table <- city_data %>% 
+  arrange(desc(`Class 1`)) %>% 
+  tidyr::drop_na() %>% 
+  mutate(class1_prop = `Class 1`/897,
+         class2_prop = `Class 2`/448,
+         class3_prop = `Class 3`/469) %>% 
+  mutate(`Class 1 (n=897)` = paste0(round(class1_prop*100,2), "%"),
+         `Class 2 (n=448)` = paste0(round(class2_prop*100,2), "%"),
+         `Class 3 (n=469)` = paste0(round(class3_prop*100,2), "%")) %>% 
+  select(`Discharged City`,`Class 1 (n=897)`,`Class 2 (n=448)`,`Class 3 (n=469)`)
+head(city_table,10) %>% 
+  kbl(escape = F, booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped", position = "left")
+```
 
 ### Client class profiles
 ```{r rescale data}
@@ -448,7 +491,7 @@ radarchart(all_cluster1[-1],axistype=1,
            vlcex = 0.7, # font size for labels
            vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
            calcex = 0.8, # font size of center axis labels
-           title="Cluster 1 Profile")
+           title="Class 1 Profile")
 ```
 
 ```{r cluster 2 profie}
@@ -465,7 +508,7 @@ radarchart(all_cluster2[-1],axistype=1,
            vlcex = 0.7, # font size for labels
            vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
            calcex = 0.8, # font size of center axis labels
-           title="Cluster 2 Profile")
+           title="Class 2 Profile")
 ```
 
 ```{r cluster 3 profie}
@@ -482,7 +525,7 @@ radarchart(all_cluster3[-1],axistype=1,
            vlcex = 0.7, # font size for labels
            vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
            calcex = 0.8, # font size of center axis labels
-           title="Cluster 3 Profile")
+           title="Class 3 Profile")
 ```
 
 ```{r table, include=FALSE}
@@ -533,10 +576,24 @@ table2 %>%
   kbl(escape = F, booktabs = T) %>% 
   kable_styling(bootstrap_options = "striped", position = "left")
 ```
+```{r summary all}
+data[is.na(data$CriminalHistory),]$CriminalHistory = 0
+(data %>% 
+    mutate(TraumaHistory = as.factor(case_when(is.na(TraumaHistory)~0,TraumaHistory == 1~1,TraumaHistory == 0~0)),
+           Gender = as.factor(Gender),
+          Race=as.factor(Race),
+          MaritalStatus=as.factor(MaritalStatus),
+          Religion=as.factor(Religion),
+          Suicide_class = as.factor(Suicide_class),
+          Homicide_class = as.factor(Homicide_class),
+          Incident_class = as.factor(Incident_class),
+          `Discharged City`=as.factor(City)) %>% 
+  group_by(Client_class) %>% 
+  do(summary_stats=summary(.)))$summary_stats
+```
 
 
 ```{r summary, echo=FALSE}
-data[is.na(data$CriminalHistory),]$CriminalHistory = 0
 data3 <- data %>% 
   select(Client_class,CurrentAge, Gender, Race, MaritalStatus, Religion, City, SuicideRisk_Total, HomicideRisk_Total, IncidentScore, CriminalHistory, TraumaHistory, AodInvolvement, Disruption, AodLastSixMonths, LegalNonConformingLastSixMonths,GlobalAodPsychosocialDistruptionAndProblems) %>% 
    mutate(TraumaHistory = as.factor(case_when(is.na(TraumaHistory)~0,
