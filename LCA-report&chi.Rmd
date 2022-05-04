@@ -1,0 +1,504 @@
+---
+title: "LCA-followup"
+author: "Jiner Zheng"
+date: '2022-05-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r load data and dependencies, include=FALSE}
+library(dplyr) # data manipulation
+library(knitr) # kable() --> beautify table
+library(kableExtra) # kbl() & kable_styling() -> for dataframe object styling
+library(plotly) # interactive graphs
+library(fmsb) # radarcharts()
+library(tidyr) # drop_na() etc.
+data <- read.csv("client_class.csv")[-1]
+names(data)[37] <- "Client_class"
+```
+
+```{r load episode data for program info}
+EpisodeDaTa <- read.csv("../Data /EpisodeData.csv")
+```
+
+# Summary Statistics
+
+## Summary table of main variables of interests (no demographics)
+```{r data prep}
+data <- data %>% mutate(Incident_class = ifelse(IncidentScore == 1,"Yes","No"),
+                        TraumaHistory = ifelse(TraumaHistory == 1, 1, 0))
+data_mat <- data %>% 
+## include main variables of interests
+  select(Client_class,CurrentAge, SuicideRisk_Total, HomicideRisk_Total, IncidentScore, CriminalHistory, TraumaHistory, AodInvolvement, Disruption, AodLastSixMonths, LegalNonConformingLastSixMonths,GlobalAodPsychosocialDistruptionAndProblems) %>% 
+  mutate(Client_class=as.numeric(as.character(Client_class)))
+# code out missing values in trauma as 0
+data_mat[is.na(data_mat$TraumaHistory),]$TraumaHistory = 0
+data_mat[is.na(data_mat$CriminalHistory),]$CriminalHistory = 0
+```
+
+```{r create table}
+table <- 
+  data_mat %>% 
+  group_by(Client_class) %>% 
+  summarise(`Current Age` = mean(CurrentAge),
+            `Suicide Risk Level`=mean(SuicideRisk_Total),
+            `Homicide Risk Level`=mean(HomicideRisk_Total),
+            `Criminal History` = mean(CriminalHistory),
+            `Aod Involvement` = mean(AodInvolvement),
+            `Disruption` = mean(Disruption),
+            `Life Functioning Problems` = mean(GlobalAodPsychosocialDistruptionAndProblems),
+            `Aod Last Six Months` = mean(AodLastSixMonths),
+            `Legal Non-Conforming Problems` = mean(LegalNonConformingLastSixMonths))  %>% 
+  t() %>% # transpose matrix
+  round(digits = 2) %>% 
+  as.data.frame() 
+table <- table[-1,] # exclude client id
+colnames(table) <- c("Class 1", "Class 2", "Class 3")
+table2 <- 
+      rbind(`Number of Clients`=c(464,469,881),
+      table, 
+      `Proportion with Trauma History` = c('44% (n=204)','29% (n=134)','32% (n=288)'),
+      `Proportion with Incident History` = c('3% (n=12)','5% (n=23)','3% (n=26)'))
+```
+
+```{r add table highlights}
+# bold highest number of clients
+table2[1,3] <- cell_spec(table2[1,3],bold = T)
+# bold highest age
+table2[2,1] <- cell_spec(table2[2,1],bold = T)
+
+# highlight in suicide risk level
+table2[3,1] <- cell_spec(table2[3,1], color = "white", background = "red",bold = T) # highest suicide
+table2[3,2] <- cell_spec(table2[3,2], color = "white", background = "green",bold = T) # lowest suicide
+
+# highlight in homicide risk level
+table2[4,1] <- cell_spec(table2[4,1], color = "white", background = "red",bold = T) # highest homicide
+table2[4,2] <- cell_spec(table2[4,2], color = "white", background = "green",bold = T) # lowest homicide
+
+# highlight in criminal history
+table2[5,3] <- cell_spec(table2[5,3], color = "white", background = "red",bold = T) # highest criminal
+
+# highlight in Aod Involvement
+table2[6,1] <- cell_spec(table2[6,1], color = "white", background = "red",bold = T) # highest AOD
+table2[6,2] <- cell_spec(table2[6,2], color = "white", background = "green",bold = T) # lowest AOD
+
+# highlight in Disruption
+table2[7,1] <- cell_spec(table2[7,1], color = "white", background = "red",bold = T) # highest 
+table2[7,2] <- cell_spec(table2[7,2], color = "white", background = "green",bold = T) # lowest 
+
+# highlight in Life functioning
+table2[8,1] <- cell_spec(table2[8,1], color = "white", background = "red",bold = T) # highest
+table2[8,2] <- cell_spec(table2[8,2], color = "white", background = "green",bold = T) # lowest 
+
+# highlight in Aod last 6 months
+table2[9,1] <- cell_spec(table2[9,1], color = "white", background = "red",bold = T) # highest AOD
+table2[9,2] <- cell_spec(table2[9,2], color = "white", background = "green",bold = T) # lowest AOD
+
+# highlight in legal non-conform
+table2[10,1] <- cell_spec(table2[10,1], color = "white", background = "red",bold = T) # highest AOD
+table2[10,2] <- cell_spec(table2[10,2], color = "white", background = "green",bold = T) # lowest AOD
+
+# highlight in trauma history
+table2[11,1] <- cell_spec(table2[11,1], color = "white", background = "red",bold = T) # highest trauma share
+
+# highlight in Incident history
+table2[12,2] <- cell_spec(table2[12,2], color = "white", background = "red",bold = T) # highest incident proportion
+```
+
+```{r draw summary table}
+# rename table 2
+colnames(table2) <- c("Class 1-High", "Class 2-Low", "Class 3-Moderate")
+table2 %>% 
+  kbl(escape = F, booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped", position = "left")
+```
+
+## Complete summary stats of all variables included
+
+```{r summary stats of all classes}
+#data[is.na(data$CriminalHistory),]$CriminalHistory = 0
+(data %>% 
+    select(-c("X2014Rel1Date","State","Zip","AddressType")) %>% 
+    mutate(TraumaHistory = as.factor(case_when(is.na(TraumaHistory)~0,TraumaHistory == 1~1,TraumaHistory == 0~0)),
+           Gender = as.factor(Gender),
+          Race=as.factor(Race),
+          PrimaryLanguage = as.factor(PrimaryLanguage),
+          UsVeteran = as.factor(UsVeteran),
+          ReturnType = as.factor(ReturnType),
+          MaritalStatus=as.factor(MaritalStatus),
+          Religion=as.factor(Religion),
+          Suicide_class = as.factor(Suicide_class),
+          Homicide_class = as.factor(Homicide_class),
+          Incident_class = as.factor(Incident_class),
+          Aod1_class = as.factor(Aod1_class),
+          Aod2_class = as.factor(Aod2_class),
+          Disruption_class = as.factor(Disruption_class),
+          LegalNonConform_class = as.factor(LegalNonConform_class),
+          LifeFunctionality_class = as.factor(LifeFunctionality_class),
+          `Discharged City`=as.factor(City),
+          Client_class = as.factor(as.character(Client_class))) %>% 
+  group_by(Client_class) %>% 
+  do(summary_stats=summary(.)))$summary_stats
+```
+
+# Visualizations
+## All Client classes profiles: radarcharts
+```{r rescale data}
+# get rescaled data matrix of numeric variables using min-max difference normalization
+maxmin <- function(x){
+  x <- (x-min(x))/(max(x)-min(x))
+}
+# create rescaled data matrix using max-min difference
+data_scaled <- data_mat %>% 
+  drop_na() %>% 
+  sapply(maxmin) %>% 
+  as.data.frame() %>% # convert into dataframe
+  mutate(Client_class = data_mat$Client_class) %>% 
+  group_by(Client_class) %>% 
+  summarise(Age = mean(CurrentAge),
+            SuicideRisk_Total=mean(SuicideRisk_Total),
+            HomicideRisk_Total=mean(HomicideRisk_Total),
+            TraumaHistory = mean(TraumaHistory),
+            CriminalHistory = mean(CriminalHistory),
+            AodInvolvement = mean(AodInvolvement),
+            Disruption = mean(Disruption),
+            LifeFunctionProblem = mean(GlobalAodPsychosocialDistruptionAndProblems),
+            AodLastSixMonths = mean(AodLastSixMonths),
+            LegalNonConform = mean(LegalNonConformingLastSixMonths))
+```
+
+```{r cluster 1 profie}
+all_cluster1 <- data_scaled %>% 
+  filter(Client_class==1) 
+# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each variable to show on the plot!
+all_cluster1 <- rbind(rep(0.75,11) , rep(0,11) , all_cluster1)
+radarchart(all_cluster1[-1],axistype=1,
+           # custom polygon
+           pcol = rgb(1, 0.4, 0.6, 0.9), pfcol =rgb(1, 0.4, 0.6, 0.25), plwd=4,
+           # custom grid
+           cglcol = "grey", cglty = 1, axislabcol = "grey", caxislabels =  c(0,0.15,0.25,0.5,0.75), cglwd=0.8,
+           # custom labels
+           vlcex = 0.7, # font size for labels
+           vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
+           calcex = 0.8, # font size of center axis labels
+           title="Class 1 (High) Profile")
+```
+
+```{r cluster 2 profie}
+all_cluster2 <- data_scaled %>% 
+  filter(Client_class==2) 
+# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each variable to show on the plot!
+all_cluster2 <- rbind(rep(0.75,11) , rep(0,11) , all_cluster2)
+radarchart(all_cluster2[-1],axistype=1,
+           # custom polygon
+           pcol = rgb(0.2,0.5,0.5,0.9), pfcol =rgb(0.2,0.5,0.5,0.5), plwd=4,
+           # custom grid
+           cglcol = "grey", cglty = 1, axislabcol = "grey", caxislabels = c(0,0.15,0.25,0.5,0.75), cglwd=0.8,
+           # custom labels
+           vlcex = 0.7, # font size for labels
+           vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
+           calcex = 0.8, # font size of center axis labels
+           title="Class 2 (Low) Profile")
+```
+
+```{r cluster 3 profie}
+all_cluster3 <- data_scaled %>% 
+  filter(Client_class==3) 
+# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each variable to show on the plot!
+all_cluster3 <- rbind(rep(0.75,11) , rep(0,11) , all_cluster3)
+radarchart(all_cluster3[-1],axistype=1,
+           # custom polygon
+           pcol = 4, pfcol =rgb(0, 0.4, 1, 0.25), plwd=4,
+           # custom grid
+           cglcol = "grey", cglty = 1, axislabcol = "grey", caxislabels =  c(0,0.15,0.25,0.5,0.75), cglwd=0.8,
+           # custom labels
+           vlcex = 0.7, # font size for labels
+           vlabels = c("Age","Suicide\nRisk","Homicide\nRisk"," Trauma\nHistory","Criminal\nHistory","Aod\nInvolvement","Disruption","Life\nFunctioning\nProblems","Aod Last\nSix Months","Legal Non-Conforming\nProblems"),
+           calcex = 0.8, # font size of center axis labels
+           title="Class 3 (moderate) Profile")
+```
+
+## Client characteristics by class membership
+### Demographics by class
+
+```{r class versus age}
+data <- mutate(data, class = as.factor(Client_class))
+age_plot <- ggplot(data, aes(x=CurrentAge, color=class, fill=class))+
+  geom_density(alpha=0.4)+
+  theme_minimal()+
+  xlab("Current Age")+
+  ylab("")+
+  ggtitle("Client class by Age")
+ggplotly(age_plot)
+```
+
+```{r class versus gender}
+gender_plot <- data %>% 
+  ggplot(aes(x=Gender, fill=Gender))+
+  geom_bar()+
+  facet_wrap(~class, labeller = label_both, scales="free")+
+  ggtitle("Client class by Gender")
+ggplotly(gender_plot)
+```
+
+```{r class versus race}
+race_plot <- 
+  ggplot(data,aes(x=Race, fill=Race))+
+  geom_bar()+
+  facet_grid(rows=vars(class), labeller = label_both, scales="free")+
+  ggtitle("Client class by Race")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+ggplotly(race_plot)
+```
+
+```{r class versus religion}
+religion_plot <- 
+  ggplot(data,aes(x=Religion, fill=Religion))+
+  geom_bar()+
+  facet_grid(rows=vars(class), labeller = label_both, scales="free")+
+  ggtitle("Client class by Religion")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+ggplotly(religion_plot)
+```
+
+```{r class versus marital status}
+marital_plot <- 
+  ggplot(data,aes(x=MaritalStatus, fill=MaritalStatus))+
+  geom_bar()+
+  facet_grid(rows=vars(class), labeller = label_both, scales="free")+
+  ggtitle("Client class by Marital Status")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+ggplotly(marital_plot)
+```
+
+### ASUS scale factors vs. class
+
+```{r class vs aod1}
+aod1_plot <- ggplot(data, aes(x=AodInvolvement, color=class, fill=class))+
+  geom_density(alpha=0.4)+
+  theme_minimal()+
+  xlab("Lifetime AOD Involvement Score")+
+  ylab("")+
+  ggtitle("Distribution of AOD Lifetime Involvement by Client Class")
+ggplotly(aod1_plot)
+```
+
+```{r aod last 6 months}
+aod2_plot <- data %>% 
+  mutate(Aod2_class = factor(Aod2_class, levels=c("low","medium","high"))) %>% 
+  ggplot(aes(x=Aod2_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("AOD Involvement Level Last Six Months")+
+  ylab("")+
+  ggtitle("AOD Involvement Level Last Six Months")
+ggplotly(aod2_plot)
+```
+
+```{r legal non conform}
+legal_plot <- data %>% 
+  mutate(LegalNonConform_class = factor(LegalNonConform_class, levels=c("low","medium","high"))) %>% 
+  ggplot(aes(x=LegalNonConform_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Legal Non Conforming Problems Last Six Months")+
+  ylab("")+
+  ggtitle("Legal Non Conforming Problems")
+ggplotly(legal_plot)
+```
+
+```{r class vs. disruption}
+dis_plot <- data %>% 
+  mutate(Disruption_class = factor(Disruption_class, levels=c("low","medium","high"))) %>% 
+  ggplot(aes(x=Disruption_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Disruption Score")+
+  ylab("")+
+  ggtitle("Distribution of Disruption by Client Class")
+ggplotly(dis_plot)
+```
+
+```{r life functionality vs. class}
+func_plot <- 
+  ggplot(data, aes(x=GlobalAodPsychosocialDistruptionAndProblems,fill=class,color=class))+
+  geom_density(alpha=0.5)+
+ # facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Life Functionality Problems")+
+  ylab("")+
+  ggtitle("Life Functionality Problems by Client Class")
+ggplotly(func_plot)
+```
+
+### Suicide & Homicide risks vs. class
+
+```{r suicide risk}
+suicide_plot <- data %>% 
+  filter(SuicideRisk_Total != 0) %>% 
+  ggplot(aes(x=SuicideRisk_Total,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Suicide Risks Level")+
+  ylab("")+
+  ggtitle("Suicide Risk Levels by Client Class")
+ggplotly(suicide_plot)
+```
+
+```{r suicide class risk}
+suicide_class_plot <- data %>% 
+  ggplot(aes(x=Suicide_class,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Suicide Risks Level")+
+  ylab("")+
+  ggtitle("Suicide Risk Class by Client Class")
+ggplotly(suicide_class_plot)
+```
+
+```{r homicide risk}
+homicide_plot <- data %>% 
+  filter(HomicideRisk_Total != 0) %>% 
+  ggplot(aes(x=HomicideRisk_Total,fill=class))+
+  geom_bar(alpha=0.7)+
+  facet_grid(rows=vars(class),labeller = label_both,scales="free")+
+  theme_minimal()+
+  xlab("Homicide Risks Level")+
+  ylab("")+
+  ggtitle("Homicide Risk Levels by Client Class")
+ggplotly(homicide_plot)
+```
+
+### Trauma history vs. class
+
+```{r trauma history}
+trauma_plot <- data %>% 
+  ggplot(aes(x=Trauma_class, fill=Trauma_class))+
+  geom_bar(alpha=0.8)+
+  facet_wrap(~class, labeller = label_both, scales="free")+
+  ylab("Trauma History")+
+  ggtitle("Client Class vs. Trauma History")
+ggplotly(trauma_plot)
+```
+
+### Incident scores vs. class
+
+```{r incidents}
+incident_plot <- data %>% 
+  filter(IncidentScore != 0) %>% 
+  ggplot(aes(x=IncidentScore,color=class, fill=class))+
+  geom_density(alpha=0.5)+
+  facet_grid(labeller = label_both)+
+  theme_minimal()+
+  xlab("Incident Scores")+
+  ylab("")+
+  ggtitle("Incident Scores by client class")
+ggplotly(incident_plot)
+```
+
+
+# Chi-square Test 
+
+## Chi-square on Incident_class vs. Class membership
+```{r chi-square on incident}
+chi <- chisq.test(data$Incident_class, data$class)
+chi
+```
+
+```{r observed cell counts & prop, include=FALSE}
+chi$observed # cell counts
+prop.table(chi$observed, 2) # col perc --> col 100%
+prop.table(chi$observed, 1) # row perc --> row 100%
+```
+
+```{r incident history vs. client class}
+# group by incident history and class
+incident_data <- data %>% 
+  group_by(Incident_class, Client_class) %>% 
+  summarise(count=n(), .groups="keep") %>% 
+  tidyr::spread(Client_class, count) 
+names(incident_data) <- c("Incident History","Class 1","Class 2", "Class 3")
+
+# get prop and freq
+incident_table <- incident_data %>% 
+  mutate(class1_prop = `Class 1`/464,
+         class2_prop = `Class 2`/469,
+         class3_prop = `Class 3`/881) %>% 
+  mutate(`Class 1 - High (n=464)` = paste0(round(class1_prop*100,2), "%"),
+         `Class 2 - Low (n=469)` = paste0(round(class2_prop*100,2), "%"),
+         `Class 3 - Moderate (n=881)` = paste0(round(class3_prop*100,2), "%")) %>% 
+  select(`Incident History`,`Class 1 - High (n=464)`,`Class 2 - Low (n=469)`,`Class 3 - Moderate (n=881)`)
+```
+
+```{r highlight incident table}
+# highlight row max and min
+incident_table[1,2] <- cell_spec(incident_table[1,2], color = "white", background = "green",bold = T) 
+incident_table[2,3] <- cell_spec(incident_table[2,3], color = "white", background = "red",bold = T) 
+```
+
+```{r draw incident table}
+incident_table %>% 
+  kbl(escape = F, booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped", position = "left")
+```
+
+## Chi-square on Discharged City vs. Class membership
+```{r post-hoc}
+source('https://raw.githubusercontent.com/PassionDrivenStatistics/R/master/ChiSquarePostHoc.R')
+
+chisq.post.hoc(chi$observed, popsInRows=FALSE, control="bonferroni")
+```
+
+```{r chi square location}
+chi2 <- chisq.test(data$City, data$Client_class)
+chi2
+```
+
+```{r location vs. client class}
+# group by city and class
+city_data <- data %>% 
+  group_by(City, Client_class) %>% 
+  summarise(count=n(), .groups="keep") %>% 
+  tidyr::spread(Client_class, count) 
+names(city_data) <- c("Discharged City","Class 1","Class 2", "Class 3")
+
+# get prop and freq
+city_table <- city_data %>% 
+  arrange(desc(`Class 1`)) %>% 
+  tidyr::drop_na() %>% 
+  mutate(class1_prop = `Class 1`/464,
+         class2_prop = `Class 2`/469,
+         class3_prop = `Class 3`/881) %>% 
+  mutate(`Class 1 - High (n=464)` = paste0(round(class1_prop*100,2), "%"),
+         `Class 2 - Low (n=469)` = paste0(round(class2_prop*100,2), "%"),
+         `Class 3 - Moderate (n=881)` = paste0(round(class3_prop*100,2), "%")) %>% 
+  select(`Discharged City`,`Class 1 - High (n=464)`,`Class 2 - Low (n=469)`,`Class 3 - Moderate (n=881)`)
+```
+
+```{r highlight city table}
+# bolding highest row perc
+city_table[1,3] <- cell_spec(city_table[1,3], bold = T, color =  "white", background = "orange")
+city_table[2,2] <- cell_spec(city_table[2,2], bold = T, color = "white", background = "orange")
+city_table[3,4] <- cell_spec(city_table[3,4], bold = T, color = "white", background = "orange")
+```
+
+```{r draw top 10 city table}
+head(city_table,10) %>% 
+  kbl(escape = F, booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped", position = "left")
+```
+
