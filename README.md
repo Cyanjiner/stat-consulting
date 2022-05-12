@@ -6,7 +6,7 @@ This is a statistical analysis research project on Analyzing Client Behavior in 
 
 ## Authors:<img src="connection.png" align="right" height="180"/>
 
--   **QAC380 Team 1: Jiner Zheng, Keli Jiang, Leah Ewers**
+-   **Jiner Zheng** :baby_chick:**, Keli Jiang** :otter: **, Leah Ewers** :woman_cartwheeling:
 
 -   **Instructor: Professor Jennifer Rose**
 
