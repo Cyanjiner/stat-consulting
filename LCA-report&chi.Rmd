@@ -44,8 +44,6 @@ table <-
   data_mat %>% 
   group_by(Client_class) %>% 
   summarise(`Current Age` = mean(CurrentAge),
-            `Suicide Risk Level`=mean(SuicideRisk_Total),
-            `Homicide Risk Level`=mean(HomicideRisk_Total),
             `Criminal History` = mean(CriminalHistory),
             `Aod Involvement` = mean(AodInvolvement),
             `Disruption` = mean(Disruption),
@@ -60,6 +58,12 @@ colnames(table) <- c("Class 1", "Class 2", "Class 3")
 table2 <- 
       rbind(`Number of Clients`=c(464,469,881),
       table, 
+      `Proportion with Low Suicide Risk` = c('93.8% (n=435)',"99.4% (n=466)","98.5% (n=868)"),
+      `Proportion with Medium Suicide Risk` = c('4.5% (n=21)',"0.6% (n=3)","1.4% (n=12)"),
+      `Proportion with High Suicide Risk` = c('1.7% (n=8)',"0.0% (n=0)","0.1% (n=1)"),   
+      `Proportion with Low Homicide Risk` = c('85.1% (n=395)',"97.7% (n=458)","94.9% (n=836)"),
+      `Proportion with Medium Homicide Risk` = c('11.6% (n=54)',"2.1% (n=10)","4.6% (n=40)"),
+      `Proportion with High Homicide Risk` = c('3.2% (n=15)',"0.2% (n=1)","0.6% (n=5)"),    
       `Proportion with Trauma History` = c('44% (n=204)','29% (n=134)','32% (n=288)'),
       `Proportion with Incident History` = c('3% (n=12)','5% (n=23)','3% (n=26)'))
 ```
@@ -70,42 +74,52 @@ table2[1,3] <- cell_spec(table2[1,3],bold = T)
 # bold highest age
 table2[2,1] <- cell_spec(table2[2,1],bold = T)
 
-# highlight in suicide risk level
-table2[3,1] <- cell_spec(table2[3,1], color = "white", background = "red",bold = T) # highest suicide
-table2[3,2] <- cell_spec(table2[3,2], color = "white", background = "green",bold = T) # lowest suicide
-
-# highlight in homicide risk level
-table2[4,1] <- cell_spec(table2[4,1], color = "white", background = "red",bold = T) # highest homicide
-table2[4,2] <- cell_spec(table2[4,2], color = "white", background = "green",bold = T) # lowest homicide
-
 # highlight in criminal history
-table2[5,3] <- cell_spec(table2[5,3], color = "white", background = "red",bold = T) # highest criminal
+table2[3,3] <- cell_spec(table2[3,3], color = "white", background = "red",bold = T) # highest criminal
 
 # highlight in Aod Involvement
-table2[6,1] <- cell_spec(table2[6,1], color = "white", background = "red",bold = T) # highest AOD
-table2[6,2] <- cell_spec(table2[6,2], color = "white", background = "green",bold = T) # lowest AOD
+table2[4,1] <- cell_spec(table2[4,1], color = "white", background = "red",bold = T) # highest AOD
+table2[4,2] <- cell_spec(table2[4,2], color = "white", background = "green",bold = T) # lowest AOD
 
 # highlight in Disruption
-table2[7,1] <- cell_spec(table2[7,1], color = "white", background = "red",bold = T) # highest 
-table2[7,2] <- cell_spec(table2[7,2], color = "white", background = "green",bold = T) # lowest 
+table2[5,1] <- cell_spec(table2[5,1], color = "white", background = "red",bold = T) # highest 
+table2[5,2] <- cell_spec(table2[5,2], color = "white", background = "green",bold = T) # lowest 
 
 # highlight in Life functioning
-table2[8,1] <- cell_spec(table2[8,1], color = "white", background = "red",bold = T) # highest
-table2[8,2] <- cell_spec(table2[8,2], color = "white", background = "green",bold = T) # lowest 
+table2[6,1] <- cell_spec(table2[6,1], color = "white", background = "red",bold = T) # highest
+table2[6,2] <- cell_spec(table2[6,2], color = "white", background = "green",bold = T) # lowest 
 
 # highlight in Aod last 6 months
-table2[9,1] <- cell_spec(table2[9,1], color = "white", background = "red",bold = T) # highest AOD
-table2[9,2] <- cell_spec(table2[9,2], color = "white", background = "green",bold = T) # lowest AOD
+table2[7,1] <- cell_spec(table2[7,1], color = "white", background = "red",bold = T) # highest AOD
+table2[7,2] <- cell_spec(table2[7,2], color = "white", background = "green",bold = T) # lowest AOD
 
 # highlight in legal non-conform
-table2[10,1] <- cell_spec(table2[10,1], color = "white", background = "red",bold = T) # highest AOD
-table2[10,2] <- cell_spec(table2[10,2], color = "white", background = "green",bold = T) # lowest AOD
+table2[8,1] <- cell_spec(table2[8,1], color = "white", background = "red",bold = T) # highest AOD
+table2[8,2] <- cell_spec(table2[8,2], color = "white", background = "green",bold = T) # lowest AOD
+
+# highlight in low suicide
+table2[9,2] <- cell_spec(table2[9,2], color = "white", background = "green",bold = T) 
+
+# highlight in medium suicide
+table2[10,1] <- cell_spec(table2[10,1], color = "white", background = "red",bold = T) 
+
+# highlight in high suicide
+table2[11,1] <- cell_spec(table2[11,1], color = "white", background = "red",bold = T) 
+
+# highlight in low homicide
+table2[12,2] <- cell_spec(table2[12,2], color = "white", background = "green",bold = T) 
+
+# highlight in medium  homicide
+table2[13,1] <- cell_spec(table2[13,1], color = "white", background = "red",bold = T) 
+
+# highlight in high homicide
+table2[14,1] <- cell_spec(table2[14,1], color = "white", background = "red",bold = T) 
 
 # highlight in trauma history
-table2[11,1] <- cell_spec(table2[11,1], color = "white", background = "red",bold = T) # highest trauma share
+table2[15,1] <- cell_spec(table2[15,1], color = "white", background = "red",bold = T) # highest trauma share
 
 # highlight in Incident history
-table2[12,2] <- cell_spec(table2[12,2], color = "white", background = "red",bold = T) # highest incident proportion
+table2[16,2] <- cell_spec(table2[16,2], color = "white", background = "red",bold = T) # highest incident proportion
 ```
 
 ```{r draw summary table}
@@ -419,7 +433,7 @@ chi <- chisq.test(data$Incident_class, data$class)
 chi
 ```
 
-```{r observed cell counts & prop, include=FALSE}
+```{r observed cell counts & prop}
 chi$observed # cell counts
 prop.table(chi$observed, 2) # col perc --> col 100%
 prop.table(chi$observed, 1) # row perc --> row 100%
