@@ -2,13 +2,13 @@
 
 ## Description:
 
-This is a statistical analysis research project on Analyzing Client Behavior in The Connection for the QAC380 Intro to Statistical Consulting class by Professor Jennifer Rose at Wesleyan University. 
+This is a statistical analysis research project on Analyzing Client Behavior in The Connection, sponsored by [the Connection Inc.](https://www.theconnectioninc.org/) and Wesleyan [Quantitative Analysis Center](https://www.wesleyan.edu/qac/). 
 
 ## Authors:<img src="connection.png" align="right" height="180"/>
 
 -   **Jiner Zheng** :baby_chick:**, Keli Jiang** :otter: **, Leah Ewers** :woman_cartwheeling:
 
--   **Instructor: Professor Jennifer Rose**
+-   **Faculty Advisor: Professor Jennifer Rose**
 
 ## Research Questions:
 
