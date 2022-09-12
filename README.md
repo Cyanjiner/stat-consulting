@@ -1,4 +1,4 @@
-# A statistical consulting project for the Connection
+# A statistical analysis project for the Connection
 
 ## Description:
 
