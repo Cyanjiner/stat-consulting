@@ -2,7 +2,7 @@
 
 ## Description:
 
-This is a statistical analysis research project on Analyzing Client Behavior in The Connection, sponsored by [the Connection Inc.](https://www.theconnectioninc.org/) and Wesleyan [Quantitative Analysis Center](https://www.wesleyan.edu/qac/). 
+This is a statistical analysis research project on Analyzing Client Behavior in The Connection, sponsored by [the Connection Inc.](https://www.theconnectioninc.org/) and [Wesleyan Quantitative Analysis Center](https://www.wesleyan.edu/qac/). 
 
 ## Authors:<img src="connection.png" align="right" height="180"/>
 
